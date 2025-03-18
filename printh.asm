@@ -2,11 +2,13 @@ global printh
 
 ;//////// This is a working replica of stdlib printf with reduced functionality (less specifiers)
 ;////////
-
+;//////// return: 0 if everything is alright, 1 if message tried to overflow buffer.
 printh: 
 
+    mov [oldRSP], rsp
     pop rax
     mov [lostIP], rax
+    
     xor rax, rax
 
     push r9
@@ -18,7 +20,7 @@ printh:
 
     pop rsi
 
-    xor rcx, rcx ; QUESTIONABLE
+    xor rcx, rcx
 
 MainReadingLoop:
 
@@ -31,8 +33,6 @@ MainReadingLoop:
     mov rax, [rsi]
     push rbx 
     mov rbx, rax
-    ;mov [MessageBuffer + rcx], rax
-    ;inc rcx
     call PrintToBuffer
     pop rbx
 
@@ -56,15 +56,12 @@ PercentS:
     push rbx 
     xor rbx, rbx
     mov bl, PercentASCII
-    ;mov byte [MessageBuffer + rcx], PercentASCII
-    ;inc rcx
     call PrintToBuffer
     pop rbx
     inc rsi
     jmp MainReadingLoop
 
 
-speA:
 
 speB:
     pop rax
@@ -92,11 +89,9 @@ InsigSkip:
 
 InsigSkipEnd:
     add bl, zeroASCII
-    ;mov byte[MessageBuffer + rcx], bl 
     call PrintToBuffer
     shl rax, 1 
     dec rdx 
-    ;inc rcx
     jmp PrintBin
 
 PrintBin:
@@ -110,8 +105,6 @@ PrintBin:
 
     add rbx, zeroASCII
 
-    ;mov byte [MessageBuffer + rcx], bl
-    ;inc rcx
     call PrintToBuffer
 
     shl rax, 1
@@ -123,8 +116,6 @@ PrintBin:
 AllZerosInBinary:
     xor rbx, rbx 
     add bl, zeroASCII
-    ;mov byte [MessageBuffer + rcx], bl 
-    ;inc rcx 
     call PrintToBuffer
     inc rsi
     jmp MainReadingLoop
@@ -171,9 +162,6 @@ PrintDec:
     xor rbx, rbx
     mov bl, dl 
 
-    ;mov byte [MessageBuffer + rcx], dl 
-    ;inc rcx 
-
     call PrintToBuffer
     
     pop rbx
@@ -187,8 +175,6 @@ SignedIntPrint:
     xor rbx, rbx 
     mov bl, minusASCII
     call PrintToBuffer
-    ;mov byte [MessageBuffer + rcx], minusASCII
-    ;inc rcx
     pop rbx
     neg rax
     jmp RemainderLoopDec
@@ -197,24 +183,7 @@ PrintDecEnd:
     inc rsi
     jmp MainReadingLoop
 
-
-
-
-
-
-
-
-
-
-speE:
 speF:
-speG:
-speH:
-speI:
-speJ:
-speK:
-speL:
-speM:
 speN:
     mov rax, [byteCounter]
     push rax 
@@ -296,13 +265,6 @@ AllZerosInOct:
     inc rsi
     jmp MainReadingLoop
 
-
-
-speP:
-speQ:
-speR: 
-
-
 speS:
     pop rax 
 SCopy:
@@ -319,11 +281,6 @@ SCopyend:
     inc rsi
     jmp MainReadingLoop
 
-speT:
-speU:
-speV:
-speW:
-
 speX:
     pop rax 
     push rbx 
@@ -333,10 +290,6 @@ speX:
     mov bl, xASCII,
     call PrintToBuffer
     pop rbx
-    ;mov byte [MessageBuffer + rcx], zeroASCII
-    ;inc rcx 
-    ;mov byte [MessageBuffer + rcx], xASCII
-    ;inc rcx
 
     mov rdx, 0x08
 
@@ -362,8 +315,7 @@ PrintHex:
     mov rbx, rax 
     shr rbx, 0x1C
 
-    ;shl rax, 0x04
-    and bx, HexBitMask ; UNDERSTAND ERROR PLEASE
+    and bx, HexBitMask 
     cmp bl, 0x09
     jg PrintLitHex
 
@@ -377,16 +329,13 @@ AllZerosInHex:
     push rbx 
     mov bl, zeroASCII
     call PrintToBuffer
-    ;mov byte [MessageBuffer + rcx], zeroASCII
-    ;linc rcx 
     pop rbx
     inc rsi
     jmp MainReadingLoop
 
 PrintNumHex:    
     add bl, zeroASCII
-    ;mov byte [MessageBuffer + rcx], bl 
-    ;inc rcx 
+
     call PrintToBuffer
     dec rdx
 
@@ -398,26 +347,47 @@ PrintLitHex:
     sub bl, 0xA
     add bl, CapitalAascii
     call PrintToBuffer
-    ;mov byte [MessageBuffer + rcx], bl 
-    ;inc rcx
+
     dec rdx 
 
     shl rax, 0x04
 
     jmp PrintHex
 
-speY:
-speZ:
 
 PrintToBuffer: 
     inc qword [byteCounter]
     push rax 
     mov rax, [byteCounter]
     cmp rax, [BufferLength]
-    jg MainReadingLoopEnd 
-    pop rax                                 ; срешь в стек
+    je DumpBuffer 
+    pop rax
     mov byte [MessageBuffer + rcx], bl 
     inc rcx
+
+    ret
+
+DumpBuffer:
+    mov byte [MessageBuffer + rcx], bl 
+    inc rcx
+    push rsi 
+    push rdi 
+    push rdx
+
+    mov rax, 0x01
+    mov rsi, MessageBuffer
+    mov rdi, 0x01
+    mov rdx, rcx
+    syscall
+
+    pop rdx
+    pop rdi
+    pop rsi
+    pop rax
+
+    xor rcx, rcx
+    mov qword [byteCounter], 0x00
+
     ret
 
 MainReadingLoopEnd:
@@ -429,12 +399,25 @@ MainReadingLoopEnd:
     syscall
 
     mov rax, [lostIP]
-    push rax 
+    mov r8, [oldRSP]
+    mov [r8], rax
+    mov rsp, [oldRSP]
+
     mov rax, 0x00
     ret
 
 section .data
 
+oldRSP dq 0x00
+spFromStack dq 0x00
+lostIP dq 0x00
+byteCounter dq 0x00
+overFlowFlag db 0x00
+JumpTable dq 0, speB, speC, speD, 0, speF, 0x07 dup(0), speN, speO, 0x03 dup(0), speS, 0x04 dup(0), speX
+BufferLength dq 0x02
+MessageBuffer: db 0x02 dup(0)
+
+section .roDATA
 tenBin          equ 1010b
 Last32BitMask   equ 0x80000000
 FirstBitMask    equ 1b 
@@ -449,13 +432,5 @@ cASCII          equ 0x63
 xASCII          equ 0x78
 zASCII          equ 0x7A
 Sign32bitMask   equ 1000000000000000b
-
-
 TerminatorASCII equ 0x00
 PercentASCII    equ 0x25
-retCode db 0x00
-lostIP dq 0x00
-byteCounter dq 0x00
-JumpTable dq speA, speB, speC, speD, speE, speF, speG, speH, speI, speJ, speK, speL, speM, speN, speO, speP, speQ, speR, speS, speT, speU, speV, speW, speX, speY, speZ
-BufferLength dq 0x0200
-MessageBuffer: db 0x0200 dup(0)
