@@ -4,6 +4,8 @@
 
 This is a short project with implementation of printf() function from stdlib.h, written in x86-64 nasm. 
 
+![](READMEImages/EDA.png)
+
 ## Functionality 
 miniprintf() can display a string of any length and currently supports following specifiers:
 
@@ -33,7 +35,7 @@ extern "C" int printh(const char* format, ...);
 #endif
 ```
 
-Then you need to compile it with nasm. 
+Then you need to compile it with nasm with elf64 format. 
 
 Here's example of a very simple Makefile:
 
@@ -41,7 +43,7 @@ Here's example of a very simple Makefile:
 all: main.cpp miniprintf.asm main
 
 main: main.o miniprintf.o
-	g++ main.o miniprintf.o -o main -g -z noexecstack -no-pie
+	g++ main.o miniprintf.o -o main -g -no-pie
 
 main.o: main.cpp
 	g++ -c main.cpp
@@ -52,4 +54,4 @@ miniprintf.o: miniprintf.asm
 
 Then you can use it exactly like a normal printf().
 
-Here is example of miniprintf() in action:
+
